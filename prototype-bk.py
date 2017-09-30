@@ -185,26 +185,25 @@ def to_convex_point(dictionary = None):
         atom_component.append(dictionary["composition"][atom_name])
     point = [i/sum(atom_component) for i in atom_component[:-1]]
     point.append(energy)
-    print(name, energy, str(point))
+    # print(name, energy, str(point))
     return name, point
 
 
 def draw_convex(convex_plot,path,name):
-    convex_plot = np.array(convex_plot)
+    points = np.array(convex_plot)
 
-    hull = ConvexHull(convex_plot)
-
-    for i in range(len(convex_plot)):
-        print(convex_plot[i, 0], convex_plot[i, 1], label[i])
-        # plt.scatter(convex_plot[i,0], convex_plot[i,1], 'o',label=label[i])
-
-    for simplex in hull.simplices:
-        plt.plot(convex_plot[simplex, 0], convex_plot[simplex, 1], 'k-')
+    hull = ConvexHull(points)
+    fig ,ax = plt.subplots()
+    for i in range(len(points)):
+        plt.plot(points[i, 0], points[i, 1], 'ko')
+        ax.annotate(label[i], (points[i, 0], points[i, 1]))
+    for n, simplex in enumerate(hull.simplices):
+        # print(points[simplex, 0], points[simplex, 1])
+        plt.plot(points[simplex, 0], points[simplex, 1], '*--', label=str(n))
 
     # plt.plot(convex_plot[hull.vertices,0], convex_plot[hull.vertices,1], 'r--', lw=2)
     # plt.plot(convex_plot[hull.vertices[0],0], convex_plot[hull.vertices[0],1], 'r*')
-    plt.show()
-    plt.savefig(path+"/"+name+".pdf")
+    plt.savefig(path+"/"+name+"_convexhull.png",dpi=300)
     plt.close()
     pass
 
@@ -225,11 +224,10 @@ for dir_Name, subdir_List, _ in os.walk("."):
             # for example, we are at dir [SrF] [SrF]/[Sr4F],[Sr3F],[Sr5F15]
             for dirName, subdirList, fileList in os.walk(os.path.dirname(dir_Name)):
                 if not subdirList:
-                    # print('Processing directory: %s' % dirName)
-                    # if "static-vasprun.xml" in fileList:
-                    #     print('found vasprun file, name = ', "static-vasprun.xml" if "static-vasprun.xml" in fileList else None)
-                    # else:
-                    #     print("failed to find vasprun file, ", fileList)
+                    print('Processing directory: %s' % dirName)
+                    if "static-vasprun.xml" not in fileList:
+                        print("failed to find vasprun file in ", dirName)
+                        continue
 
                     file = dirName + '\\' + str(fileList[-1])
 
@@ -258,13 +256,14 @@ for dir_Name, subdir_List, _ in os.walk("."):
                         Warning('corrupted file found ' + file + "\n\n")
                         fail.append(file)
 
-            print(label)
-            print(success_count)
-
+            draw_convex(convex_plot, os.path.dirname(dir_Name), os.path.dirname(dir_Name))
+            print("Successfully imported "+str(success_count)+" structures in "+os.path.dirname(dir_Name))
+            print("\nThey are:"+" ".join(label))
             if len(fail) != 0:
-                print("\nfailed : " + str(len(fail)) + " file(s) at " + ' '.join(fail))
-                print("they are refused by lxml parse")
+                print("\nFailed : " + str(len(fail)) + " file(s) at " + ' '.join(fail))
+                print("Refused by lxml parse, might be corrupted")
             else:
-                print("\nsuccessfully imported data!")
+                print("\nSuccessfully imported data!")
+
 
 
