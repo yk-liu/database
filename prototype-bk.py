@@ -209,53 +209,62 @@ def draw_convex(convex_plot,path,name):
     pass
 
 # Set the directory you want to start from
-rootDir = "."
-success_count = 0
-fail = []
 
-convex_plot = []
-label = []
+visited_dir = []
 # iterate to find the dir that has no sub dirs
-for dirName, subdirList, fileList in os.walk(rootDir):
-    if not subdirList:
-        # print('Processing directory: %s' % dirName)
-        # if "static-vasprun.xml" in fileList:
-        #     print('found vasprun file, name = ', "static-vasprun.xml" if "static-vasprun.xml" in fileList else None)
-        # else:
-        #     print("failed to find vasprun file, ", fileList)
+for dir_Name, subdir_List, _ in os.walk("."):
+    if not subdir_List:
+        if os.path.dirname(dir_Name) not in visited_dir:
+            success_count = 0
+            fail = []
+            convex_plot = []
+            label = []
+            visited_dir.append(os.path.dirname(dir_Name))
+            # here we begin to draw convex hull
+            # we are now at the dir that contains all calculations for a system,
+            # for example, we are at dir [SrF] [SrF]/[Sr4F],[Sr3F],[Sr5F15]
+            for dirName, subdirList, fileList in os.walk(os.path.dirname(dir_Name)):
+                if not subdirList:
+                    # print('Processing directory: %s' % dirName)
+                    # if "static-vasprun.xml" in fileList:
+                    #     print('found vasprun file, name = ', "static-vasprun.xml" if "static-vasprun.xml" in fileList else None)
+                    # else:
+                    #     print("failed to find vasprun file, ", fileList)
 
-        file = dirName + '\\' + str(fileList[-1])
+                    file = dirName + '\\' + str(fileList[-1])
 
-        try:
-            doc = etree.parse(file)
-            doc = doc.getroot()
-            dictionary = get_vasprunxml(doc)
-            # print('parsing completed, now connecting database')
+                    # looks like .\1-Sr1F2\static-vasprun.xml
 
-            convex_label, convex_point =to_convex_point(dictionary)
-            convex_plot.append(convex_point)
-            label.append(convex_label)
+                    try:
+                        doc = etree.parse(file)
+                        doc = doc.getroot()
+                        dictionary = get_vasprunxml(doc)
+                        # print('parsing completed, now connecting database')
+
+                        convex_label, convex_point =to_convex_point(dictionary)
+                        convex_plot.append(convex_point)
+                        label.append(convex_label)
 
 
-            try:
-                id = posts.insert_one(dictionary).inserted_id
-                # print("inserted data, id:", id)
-                # print("testing reading")
-                # pprint.pprint(posts.find_one({"_id": id}))
-                success_count += 1
-            except Exception as e:
-                exit("fail to load to database")
-        except etree.XMLSyntaxError:
-            Warning('corrupted file found ' + file + "\n\n")
-            fail.append(file)
+                        try:
+                            id = posts.insert_one(dictionary).inserted_id
+                            # print("inserted data, id:", id)
+                            # print("testing reading")
+                            # pprint.pprint(posts.find_one({"_id": id}))
+                            success_count += 1
+                        except Exception as e:
+                            exit("fail to load to database")
+                    except etree.XMLSyntaxError:
+                        Warning('corrupted file found ' + file + "\n\n")
+                        fail.append(file)
 
-print(label)
-print(success_count)
+            print(label)
+            print(success_count)
 
-if len(fail) != 0:
-    print("\nfailed : " + str(len(fail)) + " file(s) at " + ' '.join(fail))
-    print("they are refused by lxml parse")
-else:
-    print("\nsuccessfully imported data!")
+            if len(fail) != 0:
+                print("\nfailed : " + str(len(fail)) + " file(s) at " + ' '.join(fail))
+                print("they are refused by lxml parse")
+            else:
+                print("\nsuccessfully imported data!")
 
 
